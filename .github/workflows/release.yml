@@ -1,0 +1,78 @@
+name: Signed release
+
+# Publish the source-declared version as a stable release on every main push.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signed-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'doccstat/repose' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: platform-tools
+      - name: Install pinned SDK and NDK components
+        run: |
+          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.2.12479018'
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >>"$GITHUB_ENV"
+          echo "XPOSED_API_JAR=$RUNNER_TEMP/api-82.jar" >>"$GITHUB_ENV"
+      - name: Fetch pinned Xposed API 82 jar
+        run: |
+          curl -fsSLo "$XPOSED_API_JAR" https://api.xposed.info/de/robv/android/xposed/api/82/api-82.jar
+          echo 'f48c635f1c7469fdec0e00ad2ea0b7a6b2f5b55065784a35b7ca3a84615e8e25  '"$XPOSED_API_JAR" | sha256sum -c -
+      - name: Test and lint
+        run: |
+          export GRADLE_USER_HOME="$HOME/.gradle"
+          python3 -B build.py --test --out dist
+          python3 -B build.py --lint --out dist
+      - name: Build with the permanent key and verify the pinned certificate
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SIGNING_KEYSTORE: ${{ runner.temp }}/repose-release.keystore
+          SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f "$SIGNING_KEYSTORE"' EXIT
+          test -n "$KEYSTORE_BASE64"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode >"$SIGNING_KEYSTORE"
+          export GRADLE_USER_HOME="$HOME/.gradle"
+          python3 -B build.py --release --out dist
+      - name: Replace the stable GitHub release for this version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash tools/release.sh
+      - name: Upload test and lint reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-reports
+          path: |
+            dist/gradle/reports/
+            dist/gradle/test-results/
+          retention-days: 7

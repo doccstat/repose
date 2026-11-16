@@ -1,0 +1,8 @@
+/build/
+/dist/
+/.gradle/
+/local.properties
+__pycache__/
+*.keystore
+*.jks
+*.p12
