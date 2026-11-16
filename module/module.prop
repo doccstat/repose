@@ -1,0 +1,6 @@
+id=repose
+name=Repose
+version=1.0.0
+versionCode=1
+author=Repose contributors
+description=Configurable work-profile pause and full-device BFU reboot. Configure in the companion app.

@@ -1,0 +1,7 @@
+{
+  "sourceLocale": "en",
+  "sourceCatalog": "res/values/strings.xml",
+  "targetLocales": [],
+  "generatedOutput": "dist/translations",
+  "overrides": {}
+}
