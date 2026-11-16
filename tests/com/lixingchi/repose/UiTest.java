@@ -18,6 +18,22 @@ import static org.junit.Assert.*;
 @SQLiteMode(SQLiteMode.Mode.LEGACY)
 @ConscryptMode(ConscryptMode.Mode.OFF)
 public class UiTest {
+    @Test public void observerAssetDefinesOnlyTheAdapterNotPlatformStubs() throws Exception {
+        byte[] dex;
+        try (java.io.InputStream input = RuntimeEnvironment.getApplication().getAssets().open("keyguard-observer/classes.dex")) {
+            dex = input.readAllBytes();
+        }
+        java.nio.ByteBuffer bytes = java.nio.ByteBuffer.wrap(dex).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        assertEquals("dex\n", new String(dex, 0, 4, java.nio.charset.StandardCharsets.US_ASCII));
+        assertEquals(1, bytes.getInt(96));
+        int type = bytes.getInt(bytes.getInt(100));
+        int name = bytes.getInt(bytes.getInt(68) + 4 * type);
+        int offset = bytes.getInt(bytes.getInt(60) + 4 * name);
+        while ((dex[offset++] & 128) != 0) { }
+        int end = offset; while (dex[end] != 0) end++;
+        assertEquals("Lcom/lixingchi/repose/observer/KeyguardObserver;",
+                new String(dex, offset, end - offset, java.nio.charset.StandardCharsets.US_ASCII));
+    }
     @Test public void settingsGroupsBuildAndAllFieldsHaveLabels() throws Exception {
         MainActivity activity = Robolectric.buildActivity(MainActivity.class).create().get();
         JSONObject status = new EngineTest.Harness().engine.status().put("ok", true).put("version", "1.0.0")
