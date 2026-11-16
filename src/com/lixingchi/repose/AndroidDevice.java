@@ -22,6 +22,12 @@ public class AndroidDevice implements Engine.Device {
     Object users() throws Exception { return service("user", "android.os.IUserManager"); }
     Object userCall(String name, Class<?>[] types, Object... args) throws Exception { return call(users(), "android.os.IUserManager", name, types, args); }
     Object info(int id) throws Exception { return userCall("getUserInfo", new Class<?>[]{int.class}, id); }
+    List<?> allUsers() throws Exception {
+        try { return (List<?>)userCall("getUsers", new Class<?>[]{boolean.class, boolean.class, boolean.class}, true, true, true); }
+        catch (NoSuchMethodException newerContract) {
+            return (List<?>)userCall("getUsers", new Class<?>[]{boolean.class}, true);
+        }
+    }
     static int integer(Object info, String field) throws Exception { return info.getClass().getField(field).getInt(info); }
     static String type(Object info) throws Exception { return (String)info.getClass().getField("userType").get(info); }
     static boolean flag(Object info, String name) throws Exception { return (Boolean)info.getClass().getMethod(name).invoke(info); }
@@ -32,7 +38,7 @@ public class AndroidDevice implements Engine.Device {
                 || flag(info, "isEphemeral")) throw new IllegalStateException("identity_changed");
         return info;
     }
-    private void verifyProfile(String profile, String parent) throws Exception {
+    void verifyProfile(String profile, String parent) throws Exception {
         Object info = verify(profile); verify(parent);
         int id = Settings.identity(profile)[0];
         Object actualParent = userCall("getProfileParent", new Class<?>[]{int.class}, id);
@@ -61,8 +67,7 @@ public class AndroidDevice implements Engine.Device {
         return (Boolean)userCall("isUserUnlocked", new Class<?>[]{int.class}, Settings.identity(identity)[0]);
     }
     @Override public boolean bfu() throws Exception {
-        List<?> all = (List<?>)userCall("getUsers", new Class<?>[]{boolean.class, boolean.class, boolean.class}, true, true, true);
-        for (Object user : all)
+        for (Object user : allUsers())
             if ((Boolean)userCall("isUserUnlocked", new Class<?>[]{int.class}, integer(user, "id"))) return false;
         return true;
     }
@@ -75,15 +80,18 @@ public class AndroidDevice implements Engine.Device {
             return (Boolean)call(trust, api, "isDeviceLocked", new Class<?>[]{int.class}, Settings.identity(identity)[0]);
         }
     }
+    void enableQuietMode(String identity, String parent) throws Exception {
+        verifyProfile(identity, parent);
+        Object result = userCall("requestQuietModeEnabled", new Class<?>[]{String.class, boolean.class, int.class, android.content.IntentSender.class, int.class},
+                "android", true, Settings.identity(identity)[0], null, 0);
+        if (!Boolean.TRUE.equals(result)) throw new IllegalStateException("profile_pause_rejected");
+    }
+    void requestQuietMode(String identity, String parent) throws Exception { QuietMode.request(identity, parent); }
     @Override public void pause(String identity, String parent) throws Exception {
         verifyProfile(identity, parent);
         int id = Settings.identity(identity)[0];
         boolean quiet = (Boolean)userCall("isQuietModeEnabled", new Class<?>[]{int.class}, id);
-        if (!quiet) {
-            Object result = userCall("requestQuietModeEnabled", new Class<?>[]{String.class, boolean.class, int.class, android.content.IntentSender.class, int.class},
-                    "android", true, id, null, 0);
-            if (!Boolean.TRUE.equals(result)) throw new IllegalStateException("profile_pause_rejected");
-        }
+        if (!quiet) requestQuietMode(identity, parent);
         long deadline = elapsed() + 20000;
         while (elapsed() < deadline) {
             verifyProfile(identity, parent);
@@ -101,9 +109,8 @@ public class AndroidDevice implements Engine.Device {
         context.getSystemService(PowerManager.class).reboot(null);
     }
     JSONArray inventory() throws Exception {
-        List<?> all = (List<?>)userCall("getUsers", new Class<?>[]{boolean.class, boolean.class, boolean.class}, true, true, true);
         JSONArray result = new JSONArray();
-        for (Object user : all) {
+        for (Object user : allUsers()) {
             if (flag(user, "isEphemeral")) continue;
             int id = integer(user, "id");
             Object parent = userCall("getProfileParent", new Class<?>[]{int.class}, id);

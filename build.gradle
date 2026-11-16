@@ -1,6 +1,8 @@
 plugins { id 'com.android.application' version '8.11.1' }
 
 layout.buildDirectory = file(providers.gradleProperty('reposeBuildDir').getOrElse("${System.getProperty('user.home')}/.cache/repose/gradle"))
+def observerClasses = layout.buildDirectory.dir('observer-classes')
+def observerAssets = layout.buildDirectory.dir('observer-assets')
 def api = System.getenv('XPOSED_API_JAR')
 if (!api || !file(api).isFile()) throw new GradleException('Set XPOSED_API_JAR to API 82')
 if (java.security.MessageDigest.getInstance('SHA-256').digest(file(api).bytes).encodeHex().toString()
@@ -21,9 +23,9 @@ android {
             manifest.srcFile 'AndroidManifest.xml'
             java.srcDirs = ['src']
             res.srcDirs = ['res']
-            assets.srcDirs = ['assets']
+            assets.srcDirs = ['assets', observerAssets]
         }
-        test.java.srcDirs = ['tests']
+        test.java.srcDirs = ['tests', 'observer']
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -38,9 +40,32 @@ android {
 androidComponents {
     onVariants(selector().withBuildType('debug')) { variant -> variant.androidResources.localeFilters.addAll('en-rXA', 'ar-rXB') }
 }
+tasks.register('compileKeyguardObserver', JavaCompile) {
+    source = fileTree('observer') { include '**/*.java' }
+    classpath = files()
+    options.release = 17
+    destinationDirectory = observerClasses
+}
+tasks.register('dexKeyguardObserver', JavaExec) {
+    dependsOn 'compileKeyguardObserver'
+    def adapter = observerClasses.map { it.file('com/lixingchi/repose/observer/KeyguardObserver.class') }
+    def output = observerAssets.map { it.dir('keyguard-observer') }
+    inputs.files(adapter, observerClasses)
+    outputs.dir(output)
+    classpath = files("${android.sdkDirectory}/build-tools/${android.buildToolsVersion}/lib/d8.jar")
+    mainClass = 'com.android.tools.r8.D8'
+    doFirst {
+        output.get().asFile.mkdirs()
+        args = ['--min-api', '33', '--lib', android.bootClasspath[0].absolutePath,
+                '--classpath', observerClasses.get().asFile.absolutePath,
+                '--output', output.get().asFile.absolutePath, adapter.get().asFile.absolutePath]
+    }
+}
+tasks.named('preBuild').configure { dependsOn 'dexKeyguardObserver' }
 dependencies {
     implementation 'com.google.android.material:material:1.14.0'
     compileOnly files(api)
+    testImplementation files(api)
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.json:json:20240303'
     testImplementation 'org.robolectric:robolectric:4.17'

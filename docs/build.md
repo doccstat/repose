@@ -22,7 +22,12 @@ Default output is `~/.cache/repose/`. `--out` selects another directory outside
 source, or exactly `dist/`. `ANDROID_AAPT2` can select a host-compatible aapt2;
 `ANDROID_CC` can select an Android ARM64 compiler. Keep generated outputs out of
 source control. Tests use no root or phone; OpenSSL and a host C compiler are needed
-for sender and alarm syscall-contract tests.
+for sender and alarm syscall-contract tests. The Android build compiles the small
+`observer/` adapter into an isolated DEX asset. Its Android/SystemUI stubs are
+compile-only; the runtime adapter inherits the device's actual callback class.
+Tests check both Android 13/15 Binder contracts, the newer enumeration signature,
+quiet-mode caller/identity ordering, constructor-erased callback compatibility and
+exclusion of platform stubs from the packaged adapter.
 
 On ARM64 Linux, `tools/ndk_qemu.py` runs an unmodified Linux x86-64 NDK through
 QEMU without installing binfmt rules. Set `ANDROID_CC` to that executable,
@@ -45,7 +50,11 @@ Android enforces signer continuity on updates.
 
 On a test device, install the matched pair with all rules disabled. Confirm root
 engine connection, profile identities, watch-login activation and hook capability
-reports. Exercise a short locked timer through suspend, a real unlock just before
+reports. On each ROM, check that the quiet-mode worker's attributed Binder request
+succeeds and each biometric failure produces exactly one event after callback
+registration. Also check that a matching panic credential returns a rejected
+Android authentication result while dispatching the security action.
+Exercise a short locked timer through suspend, a real unlock just before
 the deadline, each failure/reset mode, panic PIN/password and both SMS modes.
 Confirm the selected work profile stops and the device actually fully reboots;
 then confirm primary CE storage stays locked until the first credential entry.
