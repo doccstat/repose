@@ -233,7 +233,7 @@ public final class MainActivity extends AppCompatActivity {
         work(() -> {
             JSONObject report;
             try { report = Client.call(new JSONObject().put("op", "diagnostics")); }
-            catch (Exception unavailable) { report = new JSONObject().put("version", "1.0.0").put("sdk", android.os.Build.VERSION.SDK_INT).put("engine", "unavailable"); }
+            catch (Exception unavailable) { report = new JSONObject().put("version", BuildConfig.VERSION_NAME).put("sdk", android.os.Build.VERSION.SDK_INT).put("engine", "unavailable"); }
             report.put("receiver", createDeviceProtectedStorageContext().getSharedPreferences("receiver_status", MODE_PRIVATE).getString("error", "none"));
             return report;
         }, report -> {

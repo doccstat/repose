@@ -95,12 +95,12 @@ public final class Daemon {
             switch (op) {
                 case "status":
                     return engine.status().put("ok", true).put("users", device.inventory()).put("hooks", hookStatus())
-                        .put("version", "1.0.0").put("sdk", Build.VERSION.SDK_INT);
+                        .put("version", BuildConfig.VERSION_NAME).put("sdk", Build.VERSION.SDK_INT);
                 case "diagnostics":
                     JSONObject status = engine.status();
                     JSONObject c = status.getJSONObject("config");
                     c.put("device_id", "[redacted]").put("inbox_url", "[redacted]");
-                    return status.put("ok", true).put("hooks", hookStatus()).put("version", "1.0.0")
+                    return status.put("ok", true).put("hooks", hookStatus()).put("version", BuildConfig.VERSION_NAME)
                         .put("sdk", Build.VERSION.SDK_INT).put("abi", Build.SUPPORTED_ABIS[0])
                         .put("android", Build.VERSION.RELEASE).put("security_patch", Build.VERSION.SECURITY_PATCH)
                         .put("manufacturer", Build.MANUFACTURER).put("model", Build.MODEL);

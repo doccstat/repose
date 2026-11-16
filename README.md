@@ -13,8 +13,9 @@ First Unlock (BFU)**. Root enforcement runs independently of the settings app.
 ## Install
 
 Requires Android 13+, ARM64, Magisk or KernelSU, and a device screen lock.
-Install **Repose.apk** and **Repose-module.zip** from the same build, then open
-Repose and select **Start root engine**. Configure the monitored user, optional
+Download **Repose.apk** and **Repose-module.zip** from the same
+[release](https://github.com/doccstat/repose/releases/latest), install both, then
+open Repose and select **Start root engine**. Configure the monitored user, optional
 work profile and desired rules. All triggers start disabled.
 
 For credential-failure monitoring, activate the app's device-admin receiver. It

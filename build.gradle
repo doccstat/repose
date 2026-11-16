@@ -1,6 +1,7 @@
 plugins { id 'com.android.application' version '8.11.1' }
 
 layout.buildDirectory = file(providers.gradleProperty('reposeBuildDir').getOrElse("${System.getProperty('user.home')}/.cache/repose/gradle"))
+def appManifest = new groovy.xml.XmlSlurper(false, false).parse(file('AndroidManifest.xml'))
 def observerClasses = layout.buildDirectory.dir('observer-classes')
 def observerAssets = layout.buildDirectory.dir('observer-assets')
 def api = System.getenv('XPOSED_API_JAR')
@@ -15,9 +16,10 @@ android {
         applicationId 'com.lixingchi.repose'
         minSdk 33
         targetSdk 36
-        versionCode 1
-        versionName '1.0.0'
+        versionCode appManifest.'@android:versionCode'.text().toInteger()
+        versionName appManifest.'@android:versionName'.text()
     }
+    buildFeatures { buildConfig true }
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'

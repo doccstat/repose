@@ -1,7 +1,7 @@
 # Build and test
 
-Use JDK 21, Android platform/build-tools 36, an ARM64-capable Android NDK and
-Python 3. The Gradle 8.13 wrapper checks its distribution checksum. Material
+Use JDK 21, Android platform/build-tools 36, Android NDK r27c (`27.2.12479018`)
+and Python 3. The Gradle 8.13 wrapper checks its distribution checksum. Material
 Components 1.14.0 provides the native UI; Xposed API 82 is compile-only.
 
 Download `https://api.xposed.info/de/robv/android/xposed/api/82/api-82.jar` into a
@@ -22,8 +22,8 @@ Default output is `~/.cache/repose/`. `--out` selects another directory outside
 source, or exactly `dist/`. `ANDROID_AAPT2` can select a host-compatible aapt2;
 `ANDROID_CC` can select an Android ARM64 compiler. Keep generated outputs out of
 source control. Tests use no root or phone; OpenSSL and a host C compiler are needed
-for sender and alarm syscall-contract tests. The Android build compiles the small
-`observer/` adapter into an isolated DEX asset. Its Android/SystemUI stubs are
+for sender and alarm syscall-contract tests; Bash and jq run the mocked release
+publication checks. The Android build compiles the small `observer/` adapter into an isolated DEX asset. Its Android/SystemUI stubs are
 compile-only; the runtime adapter inherits the device's actual callback class.
 Tests check both Android 13/15 Binder contracts, the newer enumeration signature,
 quiet-mode caller/identity ordering, constructor-erased callback compatibility and
@@ -39,12 +39,47 @@ build; the official Linux archive SHA-1 is
 `090e8083a715fdb1a3e402d0763c388abb03fb4e`. Native libraries use 16 KB load alignment.
 
 `--debug` creates an installable development-signed APK and matching module ZIP.
-Without it, the APK is unsigned unless existing `SIGNING_KEYSTORE`,
-`SIGNING_KEY_ALIAS`, `SIGNING_STORE_PASSWORD` and `SIGNING_KEY_PASSWORD` are
-supplied. The builder never generates a release key. Keep permanent signing
-credentials outside source and disposable caches. Both outputs have SHA-256
-files; the module embeds the exact same APK bytes as the installed companion.
+The default build is unsigned unless signing credentials are supplied. `--release`
+requires existing `SIGNING_KEYSTORE`, `SIGNING_KEY_ALIAS`, `SIGNING_STORE_PASSWORD`,
+`SIGNING_KEY_PASSWORD` and `SIGNING_CERT_SHA256`. It verifies the APK signature and
+exact certificate pin before packaging. The builder never generates a release key.
+Keep permanent signing credentials outside source, output and disposable caches.
+Both outputs have SHA-256 files; the module embeds the exact signed APK bytes.
 Android enforces signer continuity on updates.
+
+## GitHub releases
+
+The `Android build` workflow runs tests/lint and uploads the unsigned APK/module
+pair on main pushes, pull requests and manual dispatch. `Signed release` runs on
+main pushes and manual dispatch from `main` in `doccstat/repose`. After tests and
+lint, it builds the permanently signed pair and publishes a normal, latest GitHub
+release. Both workflows upload test/lint reports as downloadable Actions artifacts.
+
+Set up the repository's **release** environment for the `main` branch, without
+required reviewers for automatic publication. Configure:
+
+| Name | Environment setting |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | Secret: base64 of the permanent keystore |
+| `ANDROID_KEYSTORE_PASSWORD` | Secret: keystore password |
+| `ANDROID_KEY_PASSWORD` | Secret: key password |
+| `ANDROID_KEY_ALIAS` | Secret: key alias |
+| `ANDROID_SIGNING_CERT_SHA256` | Variable: certificate SHA-256 fingerprint |
+
+Keep the permanent key and its recovery material in durable private storage.
+The workflow decodes a temporary runner copy with private permissions and removes
+it on exit. Publication uses the repository's `GITHUB_TOKEN` with Contents write.
+
+Set `versionCode` and `versionName` in `AndroidManifest.xml` and the matching values
+in `module/module.prop`. Gradle and diagnostic versions derive from the manifest;
+`python3 build.py --version` checks the pair and prints `versionCode-versionName`.
+The initial tag is `1-1.0.0`, with release title `1.0.0`. Versions remain numeric,
+without status suffixes. CI never invents or increments them.
+
+A new main push at the same version replaces that tag's APK, module ZIP, checksums
+and release notes. Bump both version fields deliberately for a new release. An old
+run checks current `main` and skips publication if superseded. Releases are always
+published with `draft=false`, `prerelease=false` and latest status.
 
 ## Device acceptance
 
