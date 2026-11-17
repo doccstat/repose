@@ -68,7 +68,8 @@ required reviewers for automatic publication. Configure:
 
 Keep the permanent key and its recovery material in durable private storage.
 The workflow decodes a temporary runner copy with private permissions and removes
-it on exit. Publication uses the repository's `GITHUB_TOKEN` with Contents write.
+it on exit. Source publication uses the repository's `GITHUB_TOKEN` with Contents
+write; Actions write dispatches the separate LSPosed distribution workflow.
 
 Set `versionCode` and `versionName` in `AndroidManifest.xml` and the matching values
 in `module/module.prop`. Gradle and diagnostic versions derive from the manifest;
@@ -80,6 +81,42 @@ A new main push at the same version replaces that tag's APK, module ZIP, checksu
 and release notes. Bump both version fields deliberately for a new release. An old
 run checks current `main` and skips publication if superseded. Releases are always
 published with `draft=false`, `prerelease=false` and latest status.
+
+### LSPosed distribution
+
+The listing is `Xposed-Modules-Repo/com.lixingchi.repose`. After submission approval,
+accept the maintainer invitation and initialize its `main` with the public
+`SUMMARY`, `README.md` and linked `docs/`. Configure `LSPOSED_RELEASE_TOKEN` in the
+source repository or its `release` environment: a classic PAT with `public_repo`
+and listing write access, or an equivalently scoped GitHub App token.
+
+`Signed release` explicitly dispatches `distribute-release.yml`, because a release
+created with `GITHUB_TOKEN` does not trigger another release-event workflow. Manual
+runs from `main` and external `release: published` events also select GitHub's
+**latest stable source release**, not the event's possibly superseded version.
+The environment's branch policy still applies; automatic publication dispatches
+from `main`.
+
+Distribution shares signing's non-cancelling concurrency group. Before any listing
+write it downloads the APK, module ZIP and both checksums; verifies the exact
+checksum filenames, single pinned APK signer, package/version, module identity/
+version and byte-identical embedded APK; then mirrors all four files and the source
+title/notes as a stable Latest release. It neither rebuilds nor re-signs the files.
+Source downloads use `GITHUB_TOKEN`; only listing operations use the cross-repo token.
+The listing's `main` must exist first. Permission, API and verification failures
+stop the workflow rather than being treated as a missing release.
+
+After listing initialization, retry distribution without rebuilding:
+
+```sh
+gh workflow run distribute-release.yml --repo doccstat/repose --ref main
+```
+
+Downloadable Actions logs identify the failing step. For a shareable text log:
+
+```sh
+gh run view RUN_ID --repo doccstat/repose --log > distribution.log
+```
 
 ## Device acceptance
 
