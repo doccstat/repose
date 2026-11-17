@@ -44,3 +44,5 @@ else
     --title "$version" --notes-file dist/release-notes.md \
     --draft=false --prerelease=false --latest "${assets[@]}"
 fi
+# GITHUB_TOKEN release writes do not trigger release-event workflows.
+gh workflow run distribute-release.yml --repo "$GITHUB_REPOSITORY" --ref main

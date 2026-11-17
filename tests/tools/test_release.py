@@ -36,6 +36,8 @@ if args[:2] == ['api', 'repos/doccstat/repose/commits/main']:
 elif args[:3] == ['api', '--paginate', '--slurp']:
     if os.environ.get('FAIL_LIST') == '1': sys.exit(1)
     print(json.dumps([[{'tag_name': '1-1.0.0'}]] if os.environ.get('EXISTS') == '1' else [[]]))
+elif args[:2] == ['workflow', 'run']:
+    if os.environ.get('FAIL_DISPATCH') == '1': sys.exit(1)
 elif args[0] != 'release' and not (args[0] == 'api' and '--method' in args):
     sys.exit(99)
 ''')
@@ -74,6 +76,19 @@ elif args[0] != 'release' and not (args[0] == 'api' and '--method' in args):
         for flag in ('--draft=false', '--prerelease=false', '--latest'):
             self.assertIn(flag, edit)
         self.assertFalse(any(call[:2] == ['release', 'create'] for call in calls))
+
+    def test_create_and_update_dispatch_distribution_after_publishing(self):
+        for exists in ('0', '1'):
+            result, calls = self.run_release(EXISTS=exists)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(calls[-1], ['workflow', 'run', 'distribute-release.yml',
+                                        '--repo', 'doccstat/repose', '--ref', 'main'])
+            self.assertIn(calls[-2][:2], (['release', 'create'], ['release', 'edit']))
+
+    def test_dispatch_failure_is_reported(self):
+        result, calls = self.run_release(FAIL_DISPATCH='1')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(calls[-1][:2], ['workflow', 'run'])
 
     def test_superseded_commit_never_writes(self):
         result, calls = self.run_release(HEAD_SHA='b' * 40)
