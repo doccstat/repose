@@ -15,8 +15,9 @@ First Unlock (BFU)**. Root enforcement runs independently of the settings app.
 Requires Android 13+, ARM64, Magisk or KernelSU, and a device screen lock.
 Download **Repose.apk** and **Repose-module.zip** from the same
 [release](https://github.com/doccstat/repose/releases/latest), install both, then
-open Repose and select **Start root engine**. Configure the monitored user, optional
-work profile and desired rules. All triggers start disabled.
+open Repose and select **Start root engine**. Choose the monitored user and optional
+work profile under **Device and work profile**, then open a timer or security rule.
+All triggers start disabled; **Save changes** applies your choices.
 
 For credential-failure monitoring, activate the app's device-admin receiver. It
 requests only `watch-login`, not device-owner access or data-wipe permission.
@@ -37,8 +38,8 @@ unlock restoration never restart a timer. A fresh installation has no timestamp
 until it observes a qualifying unlock; framework/module restarts preserve the timer.
 
 Each timer has an explicit duration and “wait until locked” option. Scheduled
-windows use the selected IANA time zone or the system zone, and selected start
-days (Monday = 1). Overnight windows belong to their start day; equal start/end
+windows use time pickers, selectable weekdays and a searchable time-zone list
+with a device-zone option. Overnight windows belong to their start day; equal start/end
 means 24 hours. Android/Java zone rules resolve DST gaps forward and overlaps to
 the earlier offset.
 
@@ -50,8 +51,11 @@ latched until acknowledged; acknowledgment can immediately rearm an overdue time
 Panic credentials must differ from the real credential and fit the lock-screen
 input form: at least four PIN digits or printable-ASCII password characters.
 Passphrases received remotely support Unicode. Input is never trimmed, renamed
-or normalized. Blank credential fields preserve the saved value; **Clear**
-explicitly removes it after disabling its dependent modes.
+or normalized. Blank credential fields preserve the saved value; **Remove saved
+credential** explicitly removes it on Save after disabling its dependent modes.
+Edits stay in the screen until saved; Back offers to discard them. Rotation keeps
+an open draft. If Android closes the app, re-enter unsaved credentials or explicitly
+choose **Keep saved credentials**.
 
 Enable SMS permission only when using SMS commands. The app does not become the
 default SMS app or delete received messages. A plain passphrase can be replayed by
@@ -60,7 +64,10 @@ See [remote commands](docs/remote.md) for the sender and LastSignal inbox adapte
 
 ## Diagnostics and builds
 
-Use **Export diagnostics** in the app. Reports include version, platform,
+Use **Export diagnostics** in the toolbar menu or **Status and permissions**.
+The status page also shows hook capabilities and notification access; SMS and
+credential-monitoring access are requested beside their rules.
+Reports include version, platform,
 configuration, hook capabilities, errors and operation results; credentials,
 command bodies, device identifiers and inbox URLs are excluded. Export is local
 and never uploaded automatically. Root startup failures are also recorded in
