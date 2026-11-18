@@ -120,9 +120,14 @@ gh run view RUN_ID --repo doccstat/repose --log > distribution.log
 
 ## Device acceptance
 
-On a test device, install the matched pair with all rules disabled. Confirm root
-engine connection, profile identities, watch-login activation and hook capability
-reports. On each ROM, check that the quiet-mode worker's attributed Binder request
+On a test device, install the matched pair with all rules disabled. Check Save and
+Discard, inline errors, native pickers, keyboard/Save-bar placement, and draft
+retention through Refresh, rotation and permission requests. After process
+recreation, unsaved credentials must require re-entry or an explicit choice to
+keep saved credentials. Check light/dark mode, large text and RTL.
+
+Confirm root engine connection, profile identities, watch-login activation and
+hook capability reports. On each ROM, check that the quiet-mode worker's attributed Binder request
 succeeds and each biometric failure produces exactly one event after callback
 registration. Also check that a matching panic credential returns a rejected
 Android authentication result while dispatching the security action.
